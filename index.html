@@ -47,6 +47,14 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    .no-transition,
+    .no-transition *,
+    .no-transition *::before,
+    .no-transition *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+
     html,
     body {
       height: 100%;
@@ -878,8 +886,11 @@
 
     function applyDynamicTheme(seedHex, persist = true) {
       const normalized = normalizeHex(seedHex) || defaultSeedColor;
+      const root = document.documentElement;
+      root.classList.add("no-transition");
+
       activeSeedColor = normalized;
-      document.documentElement.style.colorScheme = isDarkMode() ? "dark" : "light";
+      root.style.colorScheme = isDarkMode() ? "dark" : "light";
       document.body.dataset.themeMode = activeThemeMode;
       document.body.style.setProperty("--theme-seed-color", normalized);
 
@@ -899,6 +910,10 @@
       applyModeSupportTones(normalized);
       updateThemeControls(normalized);
       if (persist) setStoredSeedColor(normalized);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => root.classList.remove("no-transition"));
+      });
     }
 
     function setThemeMode(mode) {
@@ -932,7 +947,14 @@
 
       const picker = document.getElementById("themeColor");
       if (picker) {
-        picker.addEventListener("input", event => applyDynamicTheme(event.target.value));
+        let pickerTimer = 0;
+        picker.addEventListener("input", event => {
+          const value = normalizeHex(event.target.value);
+          if (value) document.body.style.setProperty("--theme-seed-color", value);
+          clearTimeout(pickerTimer);
+          pickerTimer = setTimeout(() => applyDynamicTheme(event.target.value), 120);
+        });
+        picker.addEventListener("change", event => applyDynamicTheme(event.target.value));
       }
 
       document.querySelectorAll(".theme-mode-button").forEach(button => {
@@ -1062,6 +1084,13 @@
       setTimeout(() => countText.classList.remove("updated"), 350);
     }
 
+    function updateActiveListItem() {
+      const items = document.querySelectorAll("#list .item");
+      items.forEach(div => {
+        div.classList.toggle("active", div.dataset.trainsetNo === activeTrainsetNo);
+      });
+    }
+
     function renderList(rows) {
       const list = document.getElementById("list");
       list.innerHTML = "";
@@ -1072,6 +1101,7 @@
       for (const item of rows) {
         const div = document.createElement("div");
         div.className = "item" + (item.trainset_no === activeTrainsetNo ? " active" : "");
+        div.dataset.trainsetNo = item.trainset_no;
         div.innerHTML = `
           <div class="item-title">${safeText(item.trainset_no)}</div>
           <div class="item-sub">${safeText(item.bureau)} · ${safeText(item.emu_depot)}</div>
@@ -1134,9 +1164,7 @@
         detail.classList.add("entering");
       });
 
-      const kw = document.getElementById("search").value.trim().toLowerCase();
-      const rows = filterRows(kw);
-      renderList(rows);
+      updateActiveListItem();
     }
 
     function filterRows(keyword) {
