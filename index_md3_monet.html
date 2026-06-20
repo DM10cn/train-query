@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>动车组数据库 · Monet</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      /*MD3核心色板*/
+      --md-sys-color-primary: #0b57d0;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #d3e3fd;
+      --md-sys-color-on-primary-container: #041e49;
+      --md-sys-color-secondary-container: #c2e7ff;
+      --md-sys-color-on-secondary-container: #001d35;
+
+      /*MD3表面色阶*/
+      --md-sys-color-surface: #fbfdfe;
+      --md-sys-color-surface-container-lowest: #ffffff;
+      --md-sys-color-surface-container-low: #f3f4f9;
+      --md-sys-color-surface-container: #edf0f5;
+      --md-sys-color-surface-container-high: #e7eaf0;
+      --md-sys-color-surface-container-highest: #e1e2e8;
+
+      /*MD3文本与边框*/
+      --md-sys-color-on-surface: #191c20;
+      --md-sys-color-on-surface-variant: #44474e;
+      --md-sys-color-outline: #74777f;
+      --md-sys-color-outline-variant: #c4c6d0;
+      --md-sys-color-error: #b3261e;
+      --md-sys-color-error-container: #f9dedc;
+      --md-sys-color-on-error-container: #410e0b;
+
+      /*MD3形状与动效*/
+      --md-sys-shape-corner-small: 12px;
+      --md-sys-shape-corner-medium: 16px;
+      --md-sys-shape-corner-large: 24px;
+      --md-sys-shape-corner-extra-large: 28px;
+      --md-sys-shape-corner-full: 9999px;
+      --transition: 0.3s cubic-bezier(0.2, 0, 0, 1);
+      --transition-fast: 0.15s cubic-bezier(0.2, 0, 0, 1);
+      --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
+      --shadow-md: 0 2px 6px 2px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html,
+    body {
+      height: 100%;
+      background-color: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      font-family: Roboto, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+    }
+
+    @keyframes unifiedEntrance {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes countPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); color: var(--md-sys-color-primary); }
+    }
+
+    @keyframes loadingPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.84; transform: scale(0.98); }
+    }
+
+    @keyframes fieldStaggerIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    aside {
+      width: 360px;
+      min-width: 360px;
+      height: 100%;
+      background-color: var(--md-sys-color-surface-container-low);
+      border-right: 1px solid var(--md-sys-color-outline-variant);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      animation: unifiedEntrance 0.5s var(--transition) both;
+    }
+
+    .aside-header {
+      padding: 24px 16px 16px;
+    }
+
+    h2 {
+      padding: 0 8px;
+      margin-bottom: 20px;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 56px;
+      padding: 0 24px;
+      background-color: var(--md-sys-color-surface-container-high);
+      border: none;
+      border-radius: var(--md-sys-shape-corner-full);
+      color: var(--md-sys-color-on-surface);
+      font-size: 16px;
+      outline: 2px solid transparent;
+      outline-offset: -2px;
+      transition: background-color var(--transition-fast), outline-color var(--transition-fast);
+    }
+
+    .search-input:focus {
+      background-color: var(--md-sys-color-surface-container-highest);
+      outline-color: var(--md-sys-color-primary);
+    }
+
+    .search-input::placeholder {
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .theme-panel {
+      margin-top: 14px;
+      padding: 12px;
+      background: var(--md-sys-color-surface-container-lowest);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-large);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .theme-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .theme-title {
+      color: var(--md-sys-color-on-surface);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .theme-status {
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .theme-swatches {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .theme-swatch,
+    .theme-custom {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-full);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .theme-swatch {
+      background: var(--seed);
+    }
+
+    .theme-swatch:hover,
+    .theme-custom:hover {
+      transform: translateY(-1px);
+    }
+
+    .theme-swatch.active {
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 0 0 3px var(--md-sys-color-primary-container);
+    }
+
+    .theme-custom {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background:
+        conic-gradient(from 0deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171);
+    }
+
+    .theme-custom-preview {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--md-sys-color-surface-container-lowest);
+      border-radius: var(--md-sys-shape-corner-full);
+      background: var(--theme-seed-color, #0050a0);
+      box-shadow: 0 0 0 1px rgb(0 0 0 / 0.18);
+    }
+
+    .theme-color-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      opacity: 0;
+    }
+
+    .theme-mode-toggle {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      margin-top: 12px;
+      padding: 4px;
+      background: var(--md-sys-color-surface-container);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-full);
+    }
+
+    .theme-mode-button {
+      height: 30px;
+      border: none;
+      border-radius: var(--md-sys-shape-corner-full);
+      background: transparent;
+      color: var(--md-sys-color-on-surface-variant);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast);
+    }
+
+    .theme-mode-button.active {
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    #count {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 0 8px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    #count.updated {
+      animation: countPulse 0.35s var(--transition);
+    }
+
+    #list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    #list::-webkit-scrollbar,
+    main::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    #list::-webkit-scrollbar-thumb,
+    main::-webkit-scrollbar-thumb {
+      background: var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-full);
+    }
+
+    #list::-webkit-scrollbar-track,
+    main::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .item {
+      position: relative;
+      margin-bottom: 4px;
+      padding: 14px 16px 14px 24px;
+      border: 1px solid transparent;
+      border-radius: var(--md-sys-shape-corner-large);
+      cursor: pointer;
+      transition:
+        background-color var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition),
+        transform var(--transition);
+    }
+
+    .item:hover {
+      background-color: var(--md-sys-color-surface-container);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .item:active {
+      transform: translateY(0);
+    }
+
+    .item::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 14px;
+      bottom: 14px;
+      width: 4px;
+      background: var(--md-sys-color-primary);
+      border-radius: var(--md-sys-shape-corner-full);
+      opacity: 0;
+      transform: scaleY(0.5);
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .item:hover::before {
+      opacity: 0.28;
+      transform: scaleY(1);
+    }
+
+    .item.active {
+      background-color: var(--md-sys-color-primary-container);
+      border-color: transparent;
+      color: var(--md-sys-color-on-primary-container);
+    }
+
+    .item.active::before {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    .item-title {
+      margin-bottom: 4px;
+      color: var(--md-sys-color-on-surface);
+      font-size: 15px;
+      font-weight: 600;
+      transition: color var(--transition-fast);
+    }
+
+    .item.active .item-title {
+      color: var(--md-sys-color-on-primary-container);
+    }
+
+    .item-sub {
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    main {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      padding: 32px 40px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      animation: unifiedEntrance 0.5s var(--transition) both;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 880px;
+      overflow: hidden;
+      background: var(--md-sys-color-surface-container-lowest);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-extra-large);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.3s var(--transition-fast), transform 0.3s var(--transition);
+    }
+
+    .card.entering {
+      animation: unifiedEntrance 0.35s var(--transition) both;
+    }
+
+    .empty-state {
+      padding: 64px 32px;
+      text-align: center;
+      color: var(--md-sys-color-on-surface-variant);
+      animation: loadingPulse 1.5s infinite ease-in-out;
+    }
+
+    .empty-title {
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 20px;
+      font-weight: 400;
+    }
+
+    .detail-hero {
+      padding: 32px;
+      background: var(--md-sys-color-primary-container);
+      border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .eyebrow {
+      color: var(--md-sys-color-primary);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .status-pill {
+      flex: 0 0 auto;
+      padding: 6px 12px;
+      background-color: var(--md-sys-color-secondary-container);
+      border-radius: var(--md-sys-shape-corner-full);
+      color: var(--md-sys-color-on-secondary-container);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .title {
+      color: var(--md-sys-color-on-primary-container);
+      font-size: 34px;
+      font-weight: 500;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+      animation: fieldStaggerIn 0.4s var(--transition) both;
+      animation-delay: var(--delay, 0ms);
+    }
+
+    .field:nth-child(odd) {
+      border-right: 1px solid var(--md-sys-color-outline-variant);
+    }
+
+    .field:nth-last-child(-n+2):nth-child(odd),
+    .field:last-child:nth-child(even) {
+      border-bottom: none;
+    }
+
+    .field:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+      border-right: none;
+    }
+
+    .label {
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .value {
+      color: var(--md-sys-color-on-surface);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .error {
+      padding: 24px;
+      background: var(--md-sys-color-error-container);
+      border-radius: var(--md-sys-shape-corner-large);
+      color: var(--md-sys-color-on-error-container);
+    }
+
+    @media (max-width: 800px) {
+      body {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      aside {
+        width: 100%;
+        min-width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        box-shadow: var(--shadow-sm);
+        animation: unifiedEntrance 0.35s var(--transition);
+      }
+
+      .aside-header {
+        padding: 16px 16px 12px;
+      }
+
+      h2 {
+        display: none;
+      }
+
+      .search-input {
+        height: 52px;
+      }
+
+      .theme-panel {
+        margin-top: 12px;
+      }
+
+      #list {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 12px 16px;
+        background: var(--md-sys-color-surface);
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .item {
+        flex: 0 0 calc(85vw - 32px);
+        margin-bottom: 0;
+        background: var(--md-sys-color-surface-container-lowest);
+        border-color: var(--md-sys-color-outline-variant);
+        box-shadow: var(--shadow-sm);
+        scroll-snap-align: center;
+      }
+
+      .item:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(0);
+      }
+
+      .item:active {
+        transform: scale(0.98);
+      }
+
+      .item::before {
+        left: -1px;
+        top: 0;
+        bottom: 0;
+        border-radius: var(--md-sys-shape-corner-large) 0 0 var(--md-sys-shape-corner-large);
+      }
+
+      .item.active {
+        border-color: var(--md-sys-color-primary);
+        box-shadow: 0 0 0 1px var(--md-sys-color-primary), var(--shadow-sm);
+      }
+
+      main {
+        height: auto;
+        overflow-y: visible;
+        padding: 16px;
+        animation: none;
+      }
+
+      .card {
+        border-radius: var(--md-sys-shape-corner-large);
+        transition: transform 0.4s var(--transition), box-shadow 0.3s var(--transition-fast);
+      }
+
+      .detail-hero {
+        padding: 24px 16px;
+      }
+
+      .hero-top {
+        align-items: flex-start;
+      }
+
+      .title {
+        font-size: 26px;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field:nth-child(odd) {
+        border-right: none;
+      }
+
+      .field {
+        padding: 16px;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant) !important;
+      }
+
+      .field:last-child {
+        border-bottom: none !important;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <div class="aside-header">
+      <h2>动车组数据库</h2>
+      <div class="search-box">
+        <input id="search" class="search-input" placeholder="搜索车组号 / 路局 / 制造商..." autocomplete="off" />
+      </div>
+      <div class="theme-panel" aria-label="主题色">
+        <div class="theme-panel-header">
+          <div class="theme-title">主题色</div>
+          <div id="themeStatus" class="theme-status">Monet</div>
+        </div>
+        <div class="theme-swatches">
+          <button class="theme-swatch" type="button" data-seed="#0050A0" data-theme-name="和谐蓝" style="--seed: #0050A0" aria-label="和谐蓝" title="和谐蓝"></button>
+          <button class="theme-swatch" type="button" data-seed="#B3261E" data-theme-name="复兴红" style="--seed: #B3261E" aria-label="复兴红" title="复兴红"></button>
+          <button class="theme-swatch" type="button" data-seed="#00796B" data-theme-name="青绿" style="--seed: #00796B" aria-label="青绿" title="青绿"></button>
+          <button class="theme-swatch" type="button" data-seed="#B7791F" data-theme-name="暖金" style="--seed: #B7791F" aria-label="暖金" title="暖金"></button>
+          <label class="theme-custom" aria-label="自定义主题色" title="自定义主题色">
+            <span id="themeCustomPreview" class="theme-custom-preview"></span>
+            <input id="themeColor" class="theme-color-input" type="color" value="#0050A0" />
+          </label>
+        </div>
+        <div class="theme-mode-toggle" aria-label="明暗模式">
+          <button class="theme-mode-button" type="button" data-theme-mode="light" aria-pressed="true">白天</button>
+          <button class="theme-mode-button" type="button" data-theme-mode="dark" aria-pressed="false">黑夜</button>
+        </div>
+      </div>
+      <div id="count">加载中...</div>
+    </div>
+    <div id="list"></div>
+  </aside>
+
+  <main>
+    <div id="detail" class="card empty-state">
+      <div class="empty-title">请在列表选择一个车组</div>
+    </div>
+  </main>
+
+  <script>
+    const defaultSeedColor = "#0050A0";
+    const monetStorageKey = "trainsetDbMonetSeed";
+    const themeModeStorageKey = "trainsetDbThemeMode";
+    const monetModuleUrl = "https://cdn.jsdelivr.net/npm/@material/material-color-utilities@0.2.7/+esm";
+    const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    let monetUtilities = null;
+    let activeSeedColor = getStoredSeedColor();
+    let activeThemeMode = getStoredThemeMode();
+    let db = {};
+    let trainsetView = [];
+    let activeTrainsetNo = "";
+
+    function getStoredSeedColor() {
+      try {
+        return normalizeHex(localStorage.getItem(monetStorageKey)) || defaultSeedColor;
+      } catch (err) {
+        return defaultSeedColor;
+      }
+    }
+
+    function setStoredSeedColor(hex) {
+      try {
+        localStorage.setItem(monetStorageKey, hex);
+      } catch (err) {
+        // Ignore storage failures in private or restricted browsing modes.
+      }
+    }
+
+    function getStoredThemeMode() {
+      try {
+        const mode = localStorage.getItem(themeModeStorageKey);
+        if (mode === "light" || mode === "dark") return mode;
+      } catch (err) {
+        // Ignore storage failures in private or restricted browsing modes.
+      }
+
+      return colorSchemeQuery.matches ? "dark" : "light";
+    }
+
+    function hasStoredThemeMode() {
+      try {
+        const mode = localStorage.getItem(themeModeStorageKey);
+        return mode === "light" || mode === "dark";
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function setStoredThemeMode(mode) {
+      try {
+        localStorage.setItem(themeModeStorageKey, mode);
+      } catch (err) {
+        // Ignore storage failures in private or restricted browsing modes.
+      }
+    }
+
+    function normalizeHex(value) {
+      if (!value) return "";
+      const raw = String(value).trim();
+      const short = raw.match(/^#?([0-9a-f]{3})$/i);
+      if (short) {
+        return "#" + short[1].split("").map(ch => ch + ch).join("").toUpperCase();
+      }
+
+      const full = raw.match(/^#?([0-9a-f]{6})$/i);
+      return full ? "#" + full[1].toUpperCase() : "";
+    }
+
+    function hexToRgb(hex) {
+      const normalized = normalizeHex(hex).slice(1);
+      return {
+        r: parseInt(normalized.slice(0, 2), 16),
+        g: parseInt(normalized.slice(2, 4), 16),
+        b: parseInt(normalized.slice(4, 6), 16)
+      };
+    }
+
+    function rgbToHex({ r, g, b }) {
+      return "#" + [r, g, b]
+        .map(value => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+    }
+
+    function mixHex(sourceHex, targetHex, amount) {
+      const source = hexToRgb(sourceHex);
+      const target = hexToRgb(targetHex);
+      return rgbToHex({
+        r: source.r * (1 - amount) + target.r * amount,
+        g: source.g * (1 - amount) + target.g * amount,
+        b: source.b * (1 - amount) + target.b * amount
+      });
+    }
+
+    function relativeLuminance(hex) {
+      const { r, g, b } = hexToRgb(hex);
+      const values = [r, g, b].map(channel => {
+        const value = channel / 255;
+        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+      });
+      return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+    }
+
+    function contrastText(hex) {
+      return relativeLuminance(hex) > 0.48 ? "#111318" : "#FFFFFF";
+    }
+
+    function isDarkMode() {
+      return activeThemeMode === "dark";
+    }
+
+    function getMonetUtilities() {
+      return monetUtilities || window.materialColorUtilities || window.MaterialColorUtilities || null;
+    }
+
+    async function loadMonetUtilities() {
+      if (getMonetUtilities()) return getMonetUtilities();
+
+      try {
+        monetUtilities = await import(monetModuleUrl);
+      } catch (err) {
+        monetUtilities = null;
+      }
+
+      applyDynamicTheme(activeSeedColor, false);
+      return monetUtilities;
+    }
+
+    function setThemeStatus(text) {
+      const status = document.getElementById("themeStatus");
+      if (status) status.textContent = text;
+    }
+
+    function applyFallbackTheme(seedHex) {
+      const dark = isDarkMode();
+      const primary = dark ? mixHex(seedHex, "#FFFFFF", 0.38) : seedHex;
+      const primaryContainer = dark ? mixHex(seedHex, "#000000", 0.54) : mixHex(seedHex, "#FFFFFF", 0.78);
+      const secondaryContainer = dark ? mixHex(seedHex, "#1A1C20", 0.42) : mixHex(seedHex, "#FFFFFF", 0.68);
+
+      const vars = dark ? {
+        "--md-sys-color-primary": primary,
+        "--md-sys-color-on-primary": contrastText(primary),
+        "--md-sys-color-primary-container": primaryContainer,
+        "--md-sys-color-on-primary-container": contrastText(primaryContainer),
+        "--md-sys-color-secondary-container": secondaryContainer,
+        "--md-sys-color-on-secondary-container": contrastText(secondaryContainer),
+        "--md-sys-color-surface": mixHex(seedHex, "#101418", 0.9),
+        "--md-sys-color-surface-container-lowest": "#0B0F14",
+        "--md-sys-color-surface-container-low": mixHex(seedHex, "#171A1F", 0.86),
+        "--md-sys-color-surface-container": mixHex(seedHex, "#1D2026", 0.82),
+        "--md-sys-color-surface-container-high": mixHex(seedHex, "#252930", 0.78),
+        "--md-sys-color-surface-container-highest": mixHex(seedHex, "#30343B", 0.74),
+        "--md-sys-color-on-surface": "#E3E2E9",
+        "--md-sys-color-on-surface-variant": "#C4C6D0",
+        "--md-sys-color-outline": "#8E9199",
+        "--md-sys-color-outline-variant": "#44474E",
+        "--md-sys-color-error": "#FFB4AB",
+        "--md-sys-color-error-container": "#93000A",
+        "--md-sys-color-on-error-container": "#FFDAD6"
+      } : {
+        "--md-sys-color-primary": primary,
+        "--md-sys-color-on-primary": contrastText(primary),
+        "--md-sys-color-primary-container": primaryContainer,
+        "--md-sys-color-on-primary-container": contrastText(primaryContainer),
+        "--md-sys-color-secondary-container": secondaryContainer,
+        "--md-sys-color-on-secondary-container": contrastText(secondaryContainer),
+        "--md-sys-color-surface": mixHex(seedHex, "#FFFFFF", 0.96),
+        "--md-sys-color-surface-container-lowest": "#FFFFFF",
+        "--md-sys-color-surface-container-low": mixHex(seedHex, "#FFFFFF", 0.92),
+        "--md-sys-color-surface-container": mixHex(seedHex, "#FFFFFF", 0.88),
+        "--md-sys-color-surface-container-high": mixHex(seedHex, "#FFFFFF", 0.84),
+        "--md-sys-color-surface-container-highest": mixHex(seedHex, "#FFFFFF", 0.8),
+        "--md-sys-color-on-surface": "#191C20",
+        "--md-sys-color-on-surface-variant": "#44474E",
+        "--md-sys-color-outline": "#74777F",
+        "--md-sys-color-outline-variant": mixHex(seedHex, "#C4C6D0", 0.78),
+        "--md-sys-color-error": "#B3261E",
+        "--md-sys-color-error-container": "#F9DEDC",
+        "--md-sys-color-on-error-container": "#410E0B"
+      };
+
+      for (const [name, value] of Object.entries(vars)) {
+        document.body.style.setProperty(name, value);
+      }
+      setThemeStatus("本地");
+    }
+
+    function applyModeSupportTones(seedHex) {
+      const dark = isDarkMode();
+      const secondaryContainer = dark ? mixHex(seedHex, "#1A1C20", 0.42) : mixHex(seedHex, "#FFFFFF", 0.68);
+      const vars = dark ? {
+        "--md-sys-color-surface-container-lowest": "#0B0F14",
+        "--md-sys-color-surface-container-low": mixHex(seedHex, "#171A1F", 0.86),
+        "--md-sys-color-surface-container": mixHex(seedHex, "#1D2026", 0.82),
+        "--md-sys-color-surface-container-high": mixHex(seedHex, "#252930", 0.78),
+        "--md-sys-color-surface-container-highest": mixHex(seedHex, "#30343B", 0.74),
+        "--md-sys-color-secondary-container": secondaryContainer,
+        "--md-sys-color-on-secondary-container": contrastText(secondaryContainer),
+        "--md-sys-color-outline-variant": "#44474E"
+      } : {
+        "--md-sys-color-surface-container-lowest": "#FFFFFF",
+        "--md-sys-color-surface-container-low": mixHex(seedHex, "#FFFFFF", 0.92),
+        "--md-sys-color-surface-container": mixHex(seedHex, "#FFFFFF", 0.88),
+        "--md-sys-color-surface-container-high": mixHex(seedHex, "#FFFFFF", 0.84),
+        "--md-sys-color-surface-container-highest": mixHex(seedHex, "#FFFFFF", 0.8),
+        "--md-sys-color-secondary-container": secondaryContainer,
+        "--md-sys-color-on-secondary-container": contrastText(secondaryContainer),
+        "--md-sys-color-outline-variant": mixHex(seedHex, "#C4C6D0", 0.78)
+      };
+
+      for (const [name, value] of Object.entries(vars)) {
+        document.body.style.setProperty(name, value);
+      }
+    }
+
+    function applyDynamicTheme(seedHex, persist = true) {
+      const normalized = normalizeHex(seedHex) || defaultSeedColor;
+      activeSeedColor = normalized;
+      document.documentElement.style.colorScheme = isDarkMode() ? "dark" : "light";
+      document.body.dataset.themeMode = activeThemeMode;
+      document.body.style.setProperty("--theme-seed-color", normalized);
+
+      const utilities = getMonetUtilities();
+      if (utilities?.argbFromHex && utilities?.themeFromSourceColor && utilities?.applyTheme) {
+        try {
+          const theme = utilities.themeFromSourceColor(utilities.argbFromHex(normalized));
+          utilities.applyTheme(theme, { target: document.body, dark: isDarkMode() });
+          setThemeStatus("HCT");
+        } catch (err) {
+          applyFallbackTheme(normalized);
+        }
+      } else {
+        applyFallbackTheme(normalized);
+      }
+
+      applyModeSupportTones(normalized);
+      updateThemeControls(normalized);
+      if (persist) setStoredSeedColor(normalized);
+    }
+
+    function setThemeMode(mode) {
+      if (mode !== "light" && mode !== "dark") return;
+      activeThemeMode = mode;
+      setStoredThemeMode(mode);
+      applyDynamicTheme(activeSeedColor, false);
+    }
+
+    function updateThemeControls(seedHex) {
+      document.querySelectorAll(".theme-swatch").forEach(button => {
+        button.classList.toggle("active", normalizeHex(button.dataset.seed) === seedHex);
+      });
+
+      const picker = document.getElementById("themeColor");
+      if (picker && normalizeHex(picker.value) !== seedHex) {
+        picker.value = seedHex;
+      }
+
+      document.querySelectorAll(".theme-mode-button").forEach(button => {
+        const isActive = button.dataset.themeMode === activeThemeMode;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+    }
+
+    function initThemeControls() {
+      document.querySelectorAll(".theme-swatch").forEach(button => {
+        button.addEventListener("click", () => applyDynamicTheme(button.dataset.seed));
+      });
+
+      const picker = document.getElementById("themeColor");
+      if (picker) {
+        picker.addEventListener("input", event => applyDynamicTheme(event.target.value));
+      }
+
+      document.querySelectorAll(".theme-mode-button").forEach(button => {
+        button.addEventListener("click", () => setThemeMode(button.dataset.themeMode));
+      });
+
+      applyDynamicTheme(activeSeedColor, false);
+      loadMonetUtilities();
+
+      if (colorSchemeQuery.addEventListener) {
+        colorSchemeQuery.addEventListener("change", () => {
+          if (!hasStoredThemeMode()) {
+            activeThemeMode = colorSchemeQuery.matches ? "dark" : "light";
+            applyDynamicTheme(activeSeedColor, false);
+          }
+        });
+      } else if (colorSchemeQuery.addListener) {
+        colorSchemeQuery.addListener(() => {
+          if (!hasStoredThemeMode()) {
+            activeThemeMode = colorSchemeQuery.matches ? "dark" : "light";
+            applyDynamicTheme(activeSeedColor, false);
+          }
+        });
+      }
+    }
+
+    function makeMap(arr) {
+      return Object.fromEntries((arr || []).map(item => [item.id, item]));
+    }
+
+    function safeText(value) {
+      if (value === null || value === undefined || value === "") return "无数据";
+      if (Array.isArray(value)) return value.length ? value.join("、") : "无数据";
+      if (typeof value === "object") return JSON.stringify(value, null, 2);
+      return String(value);
+    }
+
+    function field(label, value, index = 0) {
+      const delay = index * 25;
+      return `
+        <div class="field" style="--delay: ${delay}ms">
+          <div class="label">${label}</div>
+          <div class="value">${safeText(value)}</div>
+        </div>
+      `;
+    }
+
+    async function loadData() {
+      try {
+        const res = await fetch("./allocation.json");
+        if (!res.ok) {
+          throw new Error("读取 allocation.json 失败，HTTP " + res.status);
+        }
+
+        db = await res.json();
+
+        const bureaus = makeMap(db.railway_bureaus);
+        const depots = makeMap(db.train_depots);
+        const emuDepots = makeMap(db.emu_depots);
+        const manufacturers = makeMap(db.manufacturers);
+        const models = makeMap(db.trainset_models);
+        const socketLocations = makeMap(db.socket_locations);
+        const toiletStatuses = makeMap(db.toilet_statuses);
+        const businessSeatTypes = makeMap(db.business_seat_types);
+
+        trainsetView = (db.trainsets || []).map(t => {
+          const model = models[t.model_id] || {};
+          const emuDepot = emuDepots[t.emu_depot_id] || {};
+          const depot = depots[emuDepot.train_depot_id] || {};
+          const bureau = bureaus[depot.bureau_id] || {};
+          const trainsetManufacturer = manufacturers[t.trainset_manufacturer_id] || {};
+          const trailerManufacturer = manufacturers[t.trailer_manufacturer_id] || {};
+          const socketLocation = socketLocations[model.socket_location_id] || {};
+          const toiletStatus = toiletStatuses[model.toilet_status_id] || {};
+          const businessSeatType = businessSeatTypes[model.business_seat_type_id] || {};
+
+          const trainsetNo = (model.model || "未知车型") + "-" + (t.car_no || "未知编号");
+          const modelFullName = [model.model, model.sub_model, model.custom_type]
+            .filter(x => x && x !== "-")
+            .join(" / ");
+
+          return {
+            raw: t,
+            trainset_no: trainsetNo,
+            model: model.model || "",
+            model_full_name: modelFullName || model.model || "",
+            sub_model: model.sub_model || "",
+            custom_type: model.custom_type || "",
+            bureau: bureau.name || "",
+            depot: depot.name || "",
+            emu_depot: emuDepot.name || "",
+            trainset_manufacturer: trainsetManufacturer.name || "",
+            trailer_manufacturer: trailerManufacturer.name || "",
+            manufacture_date: t.manufacture_month || "",
+            socket_location: socketLocation.text || "",
+            toilet_status: toiletStatus.text || "",
+            business_seat_type: businessSeatType.text || "",
+            first_class_power_legrest: model.first_class_power_legrest === true ? "有" : "无",
+            railway_travel_code_enabled: t.railway_travel_code_enabled === true ? "支持" : "不支持",
+            is_public: t.is_public === true ? "公开" : "非公开",
+            remark: (t.remark && t.remark.note) || model.remark || "",
+            tags: (t.remark && t.remark.tags) || []
+          };
+        });
+
+        renderList(trainsetView);
+
+        if (trainsetView.length > 0) {
+          renderDetail(trainsetView[0]);
+        }
+      } catch (err) {
+        document.getElementById("count").textContent = "加载失败";
+        document.getElementById("detail").innerHTML = `
+          <div class="error">
+            <strong>加载失败</strong><br>
+            ${safeText(err.message)}<br><br>
+            请确认 index_md3.html 和 allocation.json 在同一个文件夹。
+          </div>
+        `;
+      }
+    }
+
+    function updateCountText(rows) {
+      const countText = document.getElementById("count");
+      countText.textContent = `共找到 ${rows.length} 条记录`;
+      countText.classList.add("updated");
+      setTimeout(() => countText.classList.remove("updated"), 350);
+    }
+
+    function renderList(rows) {
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      updateCountText(rows);
+
+      const frag = document.createDocumentFragment();
+
+      for (const item of rows) {
+        const div = document.createElement("div");
+        div.className = "item" + (item.trainset_no === activeTrainsetNo ? " active" : "");
+        div.innerHTML = `
+          <div class="item-title">${safeText(item.trainset_no)}</div>
+          <div class="item-sub">${safeText(item.bureau)} · ${safeText(item.emu_depot)}</div>
+          <div class="item-sub">${safeText(item.trainset_manufacturer)}</div>
+        `;
+        div.onclick = () => {
+          renderDetail(item);
+          if (window.innerWidth <= 800) {
+            document.querySelector("main").scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        };
+        frag.appendChild(div);
+      }
+
+      list.appendChild(frag);
+    }
+
+    function renderDetail(item) {
+      activeTrainsetNo = item.trainset_no;
+      const detail = document.getElementById("detail");
+
+      detail.classList.remove("empty-state", "entering");
+
+      void detail.offsetWidth;
+
+      requestAnimationFrame(() => {
+        const fieldsData = [
+          { label: "车型", value: item.model_full_name },
+          { label: "路局", value: item.bureau },
+          { label: "车辆段", value: item.depot },
+          { label: "动车所", value: item.emu_depot },
+          { label: "整车制造商", value: item.trainset_manufacturer },
+          { label: "拖车制造商", value: item.trailer_manufacturer },
+          { label: "制造年月", value: item.manufacture_date },
+          { label: "插座位置", value: item.socket_location },
+          { label: "厕所配置", value: item.toilet_status },
+          { label: "商务座类型", value: item.business_seat_type },
+          { label: "一等座电动腿托", value: item.first_class_power_legrest },
+          { label: "铁路畅行码", value: item.railway_travel_code_enabled },
+          { label: "公开状态", value: item.is_public },
+          { label: "标签", value: item.tags },
+          { label: "备注", value: item.remark }
+        ];
+
+        const fieldsHtml = fieldsData.map((f, i) => field(f.label, f.value, i)).join("");
+
+        detail.innerHTML = `
+          <div class="detail-hero">
+            <div class="hero-top">
+              <div class="eyebrow">${safeText(item.model_full_name)}</div>
+              <div class="status-pill">${safeText(item.is_public)}</div>
+            </div>
+            <div class="title">${safeText(item.trainset_no)}</div>
+          </div>
+          <div class="detail-grid">
+            ${fieldsHtml}
+          </div>
+        `;
+
+        detail.classList.add("entering");
+      });
+
+      const kw = document.getElementById("search").value.trim().toLowerCase();
+      const rows = filterRows(kw);
+      renderList(rows);
+    }
+
+    function filterRows(keyword) {
+      if (!keyword) return trainsetView;
+
+      return trainsetView.filter(item => {
+        const text = [
+          item.trainset_no,
+          item.model_full_name,
+          item.bureau,
+          item.depot,
+          item.emu_depot,
+          item.trainset_manufacturer,
+          item.trailer_manufacturer,
+          item.manufacture_date,
+          item.remark,
+          ...(item.tags || [])
+        ].join(" ").toLowerCase();
+
+        return text.includes(keyword);
+      });
+    }
+
+    document.getElementById("search").addEventListener("input", e => {
+      const kw = e.target.value.trim().toLowerCase();
+      renderList(filterRows(kw));
+    });
+
+    initThemeControls();
+    loadData();
+  </script>
+</body>
+</html>
